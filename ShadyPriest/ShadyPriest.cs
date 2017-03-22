@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-//using System.Text;
-//using System.Threading.Tasks;
+using System.Text;
+using System.Threading.Tasks;
 using System.ComponentModel.Composition;
 using ZzukBot.Constants;
 using ZzukBot.ExtensionFramework.Classes;
 using ZzukBot.Game.Statics;
 using ZzukBot.Objects;
+using System.Windows.Forms;
+using GUI;
 
 [Export(typeof(CustomClass))]
 public class ShadyPriest : CustomClass
@@ -20,11 +22,37 @@ public class ShadyPriest : CustomClass
     bool useVEmb = false;
     bool useSilence = true;
 
-    public override void Dispose() { }
-    public override bool Load() { return true;  }
+    public MainForm GUI;
+
+    private void DisposeForms()
+    {
+        foreach (var mainForm in Application.OpenForms.OfType<MainForm>())
+        {
+            mainForm.Invoke((Action)(() => { mainForm.Close(); }));
+        }
+        GUI?.Dispose();
+       GUI = null;
+    }
+
+    public override void Dispose()
+    {
+        DisposeForms();
+    }
+    public override bool Load()
+    {
+        //if (GUI == null) GUI = new MainForm();
+        //GUI.Show();
+        //GUI.ShowDialog();
+        //ShowGui();
+        return true;
+    }
 
     public override bool OnBuff() 
         {
+        if (ShadySettings.useScrolls)
+        {
+            UseScrolls();
+        }
 			if (Spell.Instance.GetSpellRank("Inner Fire") != 0)
 			{
 			if (!Local.GotAura("Inner Fire"))
@@ -51,42 +79,75 @@ public class ShadyPriest : CustomClass
 		return true; 
         }
 
+    private void UseScrolls()
+    {// Not checking for whether a buff is already active. I'm lazy.
+        for (int i = scrollNames.Length; i >= 0; i--)
+            {
+            if (Inventory.Instance.GetItemCount(scrollNames[i]) != 0)
+            {
+                WoWItem scroll = Inventory.Instance.GetItem(scrollNames[i]);
+                if (scroll.CanUse())
+                {
+                    scroll.Use();
+                }
+            }
 
-    public string[] drinkNames = {"Refreshing Spring Water", "Ice Cold Milk",
-            "Melon Juice", "Moonberry Juice",
-            "Sweet Nectar", "Morning Glory Dew", "Conjured Purified Water",
-            "Conjured Spring Water", "Conjured Mineral Water", "Conjured Sparkling Water",
-            "Conjured Crystal Water" };
+            }
+        //string scrollToUse = Inventory.Instance.GetLastItem(scrollNames);
+        //WoWItem Scroll = Inventory.Instance.GetItem(scrollToUse);
+        //Scroll.Use();
+    }
+
+    public string[] scrollNames =
+        /** A couple of thought regarding the sort of this: 
+         * There isn't a feasible scenario in which one would carry 2 different ranks of one scroll.
+         * As such, there should be no need for a check to prevent "a more powerful spell is already active" issues.
+         * I chose to entirely forego checking aura existences, because I don't care about overwriting existing scroll duration.
+        */
+    {
+        "Scroll of Agility", "Scroll of Agility II", "Scroll of Agility III", "Scroll of Agility IV",
+        "Scroll of Strength", "Scroll of Strength II", "Scroll of Strength III", "Scroll of Strength IV",
+        "Scroll of Spirit", "Scroll of Spirit II", "Scroll of Spirit III", "Scroll of Spirit IV",
+        "Scroll of Intellect", "Scroll of Intellect II", "Scroll of Intellect III", "Scroll of Intellect IV",
+        "Scroll of Protection", "Scroll of Protection II", "Scroll of Protection III", "Scroll of Protection IV",
+        "Scroll of Stamina", "Scroll of Stamina II", "Scroll of Stamina III", "Scroll of Stamina IV"
+    };
+
+    public string[] drinkNames = 
+    { //due to the nature of GetLastItem, these should be sorted in an ascending order (LevelReq/Effectiveness)
+        "Refreshing Spring Water", "Ice Cold Milk",
+        "Melon Juice", "Moonberry Juice",
+        "Sweet Nectar", "Morning Glory Dew", "Conjured Purified Water",
+        "Conjured Spring Water", "Conjured Mineral Water", "Conjured Sparkling Water",
+        "Conjured Crystal Water"
+    };
+
+    public string[] foodNames =
+    {// Level 0
+	    "Bean Soup", "Charred Wolf Meat", "Conjured Muffin", "Leg Meat", "Raw Brilliant Smallfish", "Raw Slitherskin Mackerel", "Red Shiny Apple", "Roasted Boar Meat", "Sickly Looking Fish", "Tough Hunk of Bread", "Tough Jerky", "Darnassian Bleu", 
+	    //Level 5
+	    "Conjured Bread", "Raw Longjaw Mud Snapper", "Raw Rainbow Fin Albacore", "Tel'Abim Banana", "Versicolor Treat",
+	    //Level 10
+	    "Raw Sagefish",
+	    //Level 15
+	    "Conjured Rye", "Snapvine Watermelon", "Dwarven Mild", "Moist Cornbread", "Mutton Chop", "Raw Bristle Whisker Catfish", "Spongy Morel",
+	    //Level 25
+	    "Conjured Pumpernickel", "Stormwind Brie", "Delicious Cave Mold", "Goldenbark Apple", "Raw Mithril Head Trout", "Mulgore Spice Bread", "Wild Hog Shank",
+	    //35
+	    "Conjured Sourghdough", "Cured Ham Steak", "Fine Aged Cheddar", "Moon Harvest Pumpkin", "Soft Banana Bread", "Raw Black Truffle",
+	    //Level 45
+	    "Alterac Swiss", "Conjured Sweet Roll", "Dried King Bolete", "Deep Fried Plantains", "Roasted Quail", "Homemade Cherry Pie"
+    };
 
     public void SelectDrink()
         {
             if (Local.Race == "Night Elf" && Spell.Instance.IsSpellReady("Shadowmeld"))
-            {
-            Spell.Instance.Cast("Shadowmeld");
+            {//Shadowmeld drinking
+                Spell.Instance.Cast("Shadowmeld");
             }
-            if (Inventory.Instance.GetItemCount("Morning Glory Dew") != 0)
-                Local.Drink(drinkNames[5]);
-            else if (Inventory.Instance.GetItemCount("Sweet Nectar") != 0)
-                Local.Drink(drinkNames[4]);
-            else if (Inventory.Instance.GetItemCount("Moonberry Juice") != 0)
-                Local.Drink(drinkNames[3]);
-            else if (Inventory.Instance.GetItemCount("Melon Juice") != 0)
-                Local.Drink(drinkNames[2]);
-            else if (Inventory.Instance.GetItemCount("Ice Cold Milk") != 0)
-                Local.Drink(drinkNames[1]);
-            else if (Inventory.Instance.GetItemCount("Refreshing Spring Water") != 0)
-                Local.Drink(drinkNames[0]);
-            else if (Inventory.Instance.GetItemCount("Conjured Purified Water") != 0)
-                Local.Drink(drinkNames[6]);
-            else if (Inventory.Instance.GetItemCount("Conjured Spring Water") != 0)
-                Local.Drink(drinkNames[7]);
-            else if (Inventory.Instance.GetItemCount("Conjured Mineral Water") != 0)
-                Local.Drink(drinkNames[8]);
-            else if (Inventory.Instance.GetItemCount("Conjured Sparkling Water") != 0)
-                Local.Drink(drinkNames[9]);
-            else if (Inventory.Instance.GetItemCount("Conjured Crystal Water") != 0)
-                Local.Drink(drinkNames[10]);        
-            }
+            string drinkToUse = Inventory.Instance.GetLastItem(drinkNames);
+            Local.Drink(drinkToUse);
+        }
 
 
     public bool MultiDotting()
@@ -342,12 +403,41 @@ public class ShadyPriest : CustomClass
 
     public override void OnRest()
     {   //According to v3 api, Drink() Method checks whether drinking is already taking place. No more checks needed?
-        if(Local.ManaPercent < 20)
-            SelectDrink();
+        if(Local.ManaPercent < ShadySettings.drinkAt || Local.HealthPercent < ShadySettings.eatAt)
+        {
+
+        
+            if(ShadySettings.autoSelectDrink && Local.ManaPercent < ShadySettings.drinkAt)
+            {
+                SelectDrink();
+            }
+            if(!ShadySettings.autoSelectDrink && Local.ManaPercent < ShadySettings.drinkAt && !Local.IsDrinking)
+            {
+                Local.Drink(ShadySettings.drink);
+            }
+            if(ShadySettings.autoSelectFood && Local.HealthPercent < ShadySettings.eatAt)
+            {
+                SelectFood();
+            }
+            if(ShadySettings.autoSelectFood && Local.HealthPercent < ShadySettings.eatAt && !Local.IsEating)
+            {
+                Local.Eat(ShadySettings.food);
+            }
             return;
+        }
     }
 
-    public override void ShowGui() {}
+    private void SelectFood()
+    {
+        string foodToUse = Inventory.Instance.GetLastItem(foodNames);
+        Local.Eat(foodToUse);
+    }
+
+    public override void ShowGui()
+    {
+        //if (GUI == null) GUI = new MainForm();
+        //GUI.Visible = !GUI.Visible;
+    }
     public override void Unload() {}
 
     public WoWUnit Target {get{return ObjectManager.Instance.Target;}}
