@@ -81,7 +81,7 @@ public class ShadyPriest : CustomClass
 
     private void UseScrolls()
     {// Not checking for whether a buff is already active. I'm lazy.
-        for (int i = scrollNames.Length; i >= 0; i--)
+        for (int i = scrollNames.Length - 1; i >= 0; i--)
             {
             if (Inventory.Instance.GetItemCount(scrollNames[i]) != 0)
             {
